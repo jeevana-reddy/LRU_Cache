@@ -1,3 +1,4 @@
+
 class Node {
     constructor(key, value) {
         this.key = key;
@@ -7,35 +8,38 @@ class Node {
     }
 }
 
+
 class LRUCache {
     constructor(capacity) {
         this.capacity = capacity;
         this.map = new Map();
 
-        this.head = new Node(null, null);
-        this.tail = new Node(null, null);
+        this.head = new Node(null, null); // MRU side
+        this.tail = new Node(null, null); // LRU side
 
         this.head.next = this.tail;
         this.tail.prev = this.head;
     }
 
-    add(node) {
+    _remove(node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    _addToFront(node) {
         node.next = this.head.next;
         node.prev = this.head;
         this.head.next.prev = node;
         this.head.next = node;
     }
 
-    remove(node) {
-        node.prev.next = node.next;
-        node.next.prev = node.prev;
-    }
-
     get(key) {
         if (!this.map.has(key)) return -1;
+
         const node = this.map.get(key);
-        this.remove(node);
-        this.add(node);
+        this._remove(node);
+        this._addToFront(node);
+
         return node.value;
     }
 
@@ -43,102 +47,139 @@ class LRUCache {
         let removed = null;
 
         if (this.map.has(key)) {
-            this.remove(this.map.get(key));
+            const node = this.map.get(key);
+            node.value = value;
+            this._remove(node);
+            this._addToFront(node);
+            return null;
         }
 
         const node = new Node(key, value);
-        this.add(node);
         this.map.set(key, node);
+        this._addToFront(node);
 
         if (this.map.size > this.capacity) {
             removed = this.tail.prev;
-            this.remove(removed);
+            this._remove(removed);
             this.map.delete(removed.key);
         }
+
         return removed;
     }
 
     getNodes() {
-        let arr = [];
-        let cur = this.head.next;
-        while (cur !== this.tail) {
-            arr.push(cur);
-            cur = cur.next;
+        const nodes = [];
+        let curr = this.head.next;
+        while (curr !== this.tail) {
+            nodes.push(curr);
+            curr = curr.next;
         }
-        return arr;
+        return nodes;
     }
 }
 
+
 let cache = null;
 
-/* UI FUNCTIONS */
-function setCapacity() {
-    const cap = Number(document.getElementById("capacity").value);
-    if (!cap) return alert("Enter valid capacity");
 
-    cache = new LRUCache(cap);
-    render(`Cache initialized with capacity ${cap}`);
-}
-
-function put() {
-    if (!cache) return alert("Set capacity first");
-
-    const key = document.getElementById("put-key").value;
-    const value = document.getElementById("put-value").value;
-
-    const removed = cache.put(key, value);
-    render(removed 
-        ? `Put (${key}, ${value}) → Removed LRU (${removed.key})`
-        : `Put (${key}, ${value}) → Added as MRU`
-    );
-}
-
-function get() {
-    if (!cache) return alert("Set capacity first");
-
-    const key = document.getElementById("get-key").value;
-    const val = cache.get(key);
-
-    document.getElementById("get-result").innerText =
-        val === -1 ? "Not Found" : `Value = ${val}`;
-
-    render(val === -1 
-        ? `Get (${key}) → Not Found`
-        : `Get (${key}) → Moved to MRU`
-    );
-}
-
-function render(text) {
-    document.getElementById("explanation").innerText = text;
-    document.getElementById("capacity-info").innerText =
-        `Cache Size: ${cache.map.size} / ${cache.capacity}`;
-
+function render(message = "") {
     const container = document.getElementById("cache-container");
+    const explanation = document.getElementById("explanation");
+
     container.innerHTML = "";
+    explanation.textContent = message;
+
+    if (!cache) return;
 
     const nodes = cache.getNodes();
-    nodes.forEach((node, i) => {
+
+    nodes.forEach((node, index) => {
         const box = document.createElement("div");
-        box.className = "cache-node " +
-            (i === 0 ? "mru" : i === nodes.length - 1 ? "lru" : "mid");
+        box.classList.add("cache-node");
+
+        if (index === 0) box.classList.add("mru");
+        else if (index === nodes.length - 1) box.classList.add("lru");
+        else box.classList.add("mid");
 
         box.innerHTML = `
             <div class="key">${node.key}</div>
             <div class="value">${node.value}</div>
         `;
-        container.appendChild(box);
 
-        if (i < nodes.length - 1) {
-            const arrow = document.createElement("div");
-            arrow.className = "arrow";
-            arrow.innerText = "→";
-            container.appendChild(arrow);
-        }
+        container.appendChild(box);
     });
 }
 
+
+function setCapacity() {
+    const cap = parseInt(document.getElementById("capacity").value);
+
+    if (!cap || cap < 1) {
+        alert("Please enter a valid capacity");
+        return;
+    }
+
+    cache = new LRUCache(cap);
+    document.getElementById("capacity-info").textContent =
+        `Cache Capacity: ${cap}`;
+
+    render(`Cache initialized with capacity ${cap}`);
+}
+
+function put() {
+    if (!cache) {
+        alert("Set capacity first");
+        return;
+    }
+
+    const key = document.getElementById("put-key").value.trim();
+    const value = document.getElementById("put-value").value.trim();
+
+    if (!key || !value) {
+        alert("Enter both key and value");
+        return;
+    }
+
+    const removed = cache.put(key, value);
+
+    if (removed) {
+        render(
+            `PUT (${key}, ${value}) → Cache full, evicted LRU (${removed.key})`
+        );
+    } else {
+        render(`PUT (${key}, ${value}) → Added / Updated as MRU`);
+    }
+}
+
+function get() {
+    if (!cache) {
+        alert("Set capacity first");
+        return;
+    }
+
+    const key = document.getElementById("get-key").value.trim();
+
+    if (!key) {
+        alert("Enter key");
+        return;
+    }
+
+    const value = cache.get(key);
+    const result = document.getElementById("get-result");
+
+    if (value === -1) {
+        result.textContent = "Key not found";
+        render(`GET (${key}) → Not found`);
+    } else {
+        result.textContent = `Value: ${value}`;
+        render(`GET (${key}) → Accessed & moved to MRU`);
+    }
+}
 function toggleTheme() {
     document.body.classList.toggle("dark-theme");
-    document.querySelector(".theme-btn").innerText =
-        document.body.classList.contains("dark-theme") ? "☀️" : "🌙";
+
+    const btn = document.querySelector(".theme-btn");
+    btn.textContent = document.body.classList.contains("dark-theme")
+        ? "☀️"
+        : "🌙";
 }
