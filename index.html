@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LRU Cache Visualization</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<button class="theme-btn" onclick="toggleTheme()">🌙</button>
+
+<h2>LRU Cache Visualization (Linked List)</h2>
+
+<div class="container">
+    <h3>Set Capacity</h3>
+    <div class="form-row">
+        <label>Capacity</label>
+        <input type="number" id="capacity" min="1">
+        <button onclick="setCapacity()">Set</button>
+    </div>
+    <p id="capacity-info"></p>
+</div>
+
+<div class="container">
+    <h3>Put Operation</h3>
+    <div class="form-row">
+        <label>Key</label>
+        <input type="text" id="put-key">
+        <label>Value</label>
+        <input type="text" id="put-value">
+        <button onclick="put()">Put</button>
+    </div>
+</div>
+
+<div class="container">
+    <h3>Get Operation</h3>
+    <div class="form-row">
+        <label>Key</label>
+        <input type="text" id="get-key">
+        <button onclick="get()">Get</button>
+    </div>
+    <p id="get-result"></p>
+</div>
+
+<div class="container">
+    <h3>Cache (MRU → LRU)</h3>
+    <p id="explanation"></p>
+    <div id="cache-container"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
